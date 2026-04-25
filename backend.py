@@ -289,6 +289,9 @@ app.add_middleware(
 extractor = FeatureExtractor()
 init_db()
 
+# In-memory cache: content_id → watermarked PNG bytes
+watermark_cache: dict[str, bytes] = {}
+
 
 # ── HEALTH ────────────────────────────────────────────────────────
 @app.get("/health")
@@ -328,6 +331,11 @@ async def upload_original(file: UploadFile = File(...)):
     save_asset(content_id, file.filename or "unknown",
                embedding, img_hash, watermark_payload)
 
+    # Cache watermarked image in memory for download
+    wm_buf = io.BytesIO()
+    watermarked_img.save(wm_buf, format="PNG")
+    watermark_cache[content_id] = wm_buf.getvalue()
+
     logger.info(f"Registered asset {content_id} ({file.filename})")
 
     return JSONResponse({
@@ -338,6 +346,21 @@ async def upload_original(file: UploadFile = File(...)):
         "image_hash": img_hash,
         "message": "Original image registered and watermarked.",
     })
+
+
+# ── GET /download-watermarked/{content_id} ────────────────────────
+@app.get("/download-watermarked/{content_id}")
+def download_watermarked(content_id: str):
+    """Return the watermarked PNG so the user can test authentic detection."""
+    from fastapi.responses import Response
+    if content_id not in watermark_cache:
+        raise HTTPException(status_code=404,
+                            detail="Watermarked image not in memory. Please re-register.")
+    return Response(
+        content=watermark_cache[content_id],
+        media_type="image/png",
+        headers={"Content-Disposition": f"attachment; filename=watermarked_{content_id[:8]}.png"},
+    )
 
 
 # ── POST /check-image ─────────────────────────────────────────────

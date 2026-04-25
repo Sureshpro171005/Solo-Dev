@@ -349,6 +349,23 @@ with col_left:
                         </div>
                         """, unsafe_allow_html=True)
                         st.session_state["last_registered"] = result
+
+                        # Download watermarked image button
+                        content_id = result.get('content_id', '')
+                        wm_url = f"{API_BASE}/download-watermarked/{content_id}"
+                        try:
+                            wm_resp = requests.get(wm_url, timeout=10)
+                            if wm_resp.status_code == 200:
+                                st.download_button(
+                                    label="⬇️ Download Watermarked Image",
+                                    data=wm_resp.content,
+                                    file_name=f"watermarked_{content_id[:8]}.png",
+                                    mime="image/png",
+                                    help="Use this watermarked PNG to test Authentic Content detection"
+                                )
+                                st.info("💡 Upload this watermarked PNG on the right side to get 'Authentic Content ✅'")
+                        except Exception:
+                            pass
                     except Exception as e:
                         st.error(f"Registration failed: {e}")
 
