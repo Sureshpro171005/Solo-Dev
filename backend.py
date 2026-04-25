@@ -234,8 +234,8 @@ def make_decision(watermark_result: str | None, hash_sim: float,
       │ No match at all         │ "Different Content ❌"        │
       └─────────────────────────┴──────────────────────────────┘
     """
-    HIGH_SIM = 75.0   # threshold to call something a copy
-    CORRUPT_SIM = 40.0
+    HIGH_SIM  = 75.0   # above this → Unauthorized Copy
+    TAMP_SIM  = 60.0   # between this and HIGH_SIM → Tampered Content
 
     # Confidence = weighted avg of both similarity scores
     raw_conf = (hash_sim * 0.4 + ai_sim * 0.6)
@@ -247,15 +247,12 @@ def make_decision(watermark_result: str | None, hash_sim: float,
         if ai_sim >= HIGH_SIM or hash_sim >= HIGH_SIM:
             decision = "Unauthorized Copy ⚠️"
             confidence = round(raw_conf, 1)
-        elif ai_sim >= CORRUPT_SIM or hash_sim >= CORRUPT_SIM:
+        elif ai_sim >= TAMP_SIM or hash_sim >= TAMP_SIM:
             decision = "Tampered Content ⚠️"
             confidence = round(raw_conf * 0.85, 1)
         else:
             decision = "Different Content ❌"
             confidence = round((100 - raw_conf), 1)
-    elif watermark_result == "corrupted":
-        decision = "Tampered Content ⚠️"
-        confidence = round(raw_conf * 0.8, 1)
     else:
         decision = "Different Content ❌"
         confidence = round((100 - raw_conf), 1)
